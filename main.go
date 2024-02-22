@@ -1,6 +1,13 @@
 package main
 
-import rl "github.com/gen2brain/raylib-go/raylib"
+import (
+	"fmt"
+	"math"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
+
+const maxSpeed float32 = 15
 
 type Entity struct {
 	Rectangle rl.Rectangle
@@ -16,6 +23,16 @@ type VelocityComponent struct {
 type DragComponent struct {
 	Dragging    bool
 	MouseOffset rl.Vector2
+}
+
+func Sign(x float64) float32 {
+	if math.Signbit(x) {
+		return -1
+	}
+	if x == 0 {
+		return 0
+	}
+	return 1
 }
 
 func (v *VelocityComponent) ApplyGravity() {
@@ -54,37 +71,37 @@ func UpdatePosition(e *Entity, screenWidth, screenHeight int32) {
 	}
 }
 
-func DragSystem(e *Entity, obstacles []rl.Rectangle) {
-	if rl.IsMouseButtonPressed(rl.MouseLeftButton) && rl.CheckCollisionPointRec(rl.GetMousePosition(), e.Rectangle) {
+func DragSystem(e *Entity, obstacles []rl.Rectangle, deltaTime float64) {
+	mousePosition := rl.GetMousePosition()
+	if rl.IsMouseButtonPressed(rl.MouseLeftButton) && rl.CheckCollisionPointRec(mousePosition, e.Rectangle) {
 		e.Draggable.Dragging = true
-		mousePosition := rl.GetMousePosition()
 		e.Draggable.MouseOffset.X = mousePosition.X - e.Rectangle.X
 		e.Draggable.MouseOffset.Y = mousePosition.Y - e.Rectangle.Y
-	} else if rl.IsMouseButtonReleased(rl.MouseLeftButton) {
+	} else if rl.IsMouseButtonReleased(rl.MouseLeftButton) && e.Draggable.Dragging {
 		e.Draggable.Dragging = false
+		clamping_value := 0.1
+		// Convert Raylib's float32 to float64 for calculation, then back to float32
+		e.Velocity.Velocity.X = float32((float64(mousePosition.X) - float64(e.Rectangle.X+e.Draggable.MouseOffset.X)) / deltaTime * clamping_value)
+		e.Velocity.Velocity.Y = float32((float64(mousePosition.Y) - float64(e.Rectangle.Y+e.Draggable.MouseOffset.Y)) / deltaTime * clamping_value)
+		e.Velocity.Velocity.X = float32(math.Min(float64(maxSpeed), math.Abs(float64(e.Velocity.Velocity.X)))) * Sign(float64(e.Velocity.Velocity.X))
+		e.Velocity.Velocity.Y = float32(math.Min(float64(maxSpeed), math.Abs(float64(e.Velocity.Velocity.Y)))) * Sign(float64(e.Velocity.Velocity.Y))
+		//debug
+		fmt.Printf("Velocity X: %v, Y: %v\n", e.Velocity.Velocity.X, e.Velocity.Velocity.Y)
 	}
 
 	if e.Draggable.Dragging {
-		mousePosition := rl.GetMousePosition()
-		// Calculate new position without immediately updating the entity's rectangle
 		newX := mousePosition.X - e.Draggable.MouseOffset.X
 		newY := mousePosition.Y - e.Draggable.MouseOffset.Y
-
-		// Create a temporary rectangle to represent the new position
 		tempRect := rl.Rectangle{X: newX, Y: newY, Width: e.Rectangle.Width, Height: e.Rectangle.Height}
 
-		// Assume no collision initially
 		collisionDetected := false
-
-		// Check for collisions with obstacles
 		for _, obstacle := range obstacles {
 			if rl.CheckCollisionRecs(tempRect, obstacle) {
 				collisionDetected = true
-				break // If any collision is detected, break the loop
+				break
 			}
 		}
 
-		// Update the entity's position only if no collision is detected
 		if !collisionDetected {
 			e.Rectangle.X = newX
 			e.Rectangle.Y = newY
@@ -111,12 +128,19 @@ func main() {
 
 	rl.SetTargetFPS(60)
 
+	var lastFrameTime float64 = rl.GetTime()
+
 	for !rl.WindowShouldClose() {
+
+		currentTime := rl.GetTime()
+		deltaTime := currentTime - lastFrameTime
+		lastFrameTime = currentTime
+
 		if !player.Draggable.Dragging {
 			player.Velocity.ApplyGravity()
 		}
 
-		DragSystem(&player, obstacles)
+		DragSystem(&player, obstacles, deltaTime)
 
 		player.Velocity.CheckCollision(&player.Rectangle, obstacles)
 
