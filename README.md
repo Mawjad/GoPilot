@@ -1,5 +1,5 @@
 # GoPilot
- Trying EBitEngine
+ Trying Golang w/Raylib Bindings
 goals / objectives:
 > create custom ECS solution
-> basic top down shooter using component structure
+> make a basic game; probably boxes / shapes with collisions and such
