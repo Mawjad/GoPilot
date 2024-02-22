@@ -1,30 +1,71 @@
 package main
 
-import (
-	"log"
+import rl "github.com/gen2brain/raylib-go/raylib"
 
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-)
+type Entity int
 
-type Game struct{}
-
-func (g *Game) Update() error {
-	return nil
+type VelocityComponent struct {
+	Velocity rl.Vector2
+	Gravity  float32
 }
 
-func (g *Game) Draw(screen *ebiten.Image) {
-	ebitenutil.DebugPrint(screen, "Hello, World!")
+func (v *VelocityComponent) ApplyGravity() {
+	v.Velocity.Y += v.Gravity
 }
 
-func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return 320, 240
+func (v *VelocityComponent) CheckCollision(bounds *rl.Rectangle, obstacles []rl.Rectangle) {
+	for _, obstacle := range obstacles {
+		if rl.CheckCollisionRecs(*bounds, obstacle) {
+			v.Velocity.Y = 0
+		}
+	}
+}
+
+func UpdatePosition(bounds *rl.Rectangle, velocityComponent *VelocityComponent) {
+	bounds.X += velocityComponent.Velocity.X
+	bounds.Y += velocityComponent.Velocity.Y
 }
 
 func main() {
-	ebiten.SetWindowSize(640, 480)
-	ebiten.SetWindowTitle("Hello, World!")
-	if err := ebiten.RunGame(&Game{}); err != nil {
-		log.Fatal(err)
+	// Initialization
+	rl.InitWindow(800, 450, "GoPilot")
+	defer rl.CloseWindow()
+
+	// Define the rectangle
+	square := rl.Rectangle{X: 350, Y: 200, Width: 100, Height: 100}
+
+	// Variables for dragging logic
+	dragging := false
+	mouseOffset := rl.Vector2{}
+
+	// Setup the frame rate
+	rl.SetTargetFPS(60)
+
+	// Main game loop
+	for !rl.WindowShouldClose() {
+		// Update the dragging logic
+		if rl.IsMouseButtonPressed(rl.MouseLeftButton) && rl.CheckCollisionPointRec(rl.GetMousePosition(), square) {
+			dragging = true
+			mousePosition := rl.GetMousePosition()
+			mouseOffset.X = mousePosition.X - square.X
+			mouseOffset.Y = mousePosition.Y - square.Y
+		} else if rl.IsMouseButtonReleased(rl.MouseLeftButton) {
+			dragging = false
+		}
+
+		if dragging {
+			mousePosition := rl.GetMousePosition()
+			square.X = mousePosition.X - mouseOffset.X
+			square.Y = mousePosition.Y - mouseOffset.Y
+		}
+
+		// Begin drawing
+		rl.BeginDrawing()
+
+		rl.ClearBackground(rl.RayWhite)
+		rl.DrawRectangleRec(square, rl.Gray)
+
+		// End drawing
+		rl.EndDrawing()
 	}
 }
