@@ -8,12 +8,12 @@ import (
 )
 
 const (
-	MaxVelocity        float32 = 900.0
-	Gravity            float32 = 100.0
-	PlayerAcceleration float32 = 800.0
-	PlayerElasticity   float32 = 0.6
-	PlayerFriction     float32 = 0.2
-	PlayerDrag         float64 = 0.001
+	MaxVelocity        float32 = 2000.0
+	Gravity            float32 = 1280.0
+	PlayerAcceleration float32 = 60.0
+	PlayerElasticity   float32 = 0.02
+	PlayerFriction     float32 = 0.02
+	PlayerDrag         float64 = 0.02
 	screenWidth        int32   = 1200
 	screenHeight       int32   = 850
 )
@@ -219,11 +219,15 @@ func main() {
 	rl.InitWindow(screenWidth, screenHeight, "Physics and Collision Demo")
 	defer rl.CloseWindow()
 
-	player := Entity{
-		Body:      rl.Rectangle{X: 350, Y: 200, Width: 100, Height: 100},
-		Physics:   NewPhysicsComponent(1.0, PlayerFriction, PlayerElasticity, PlayerDrag),
-		Draggable: PlayerDragComponent{},
+	resetGame := func() Entity {
+		return Entity{
+			Body:      rl.Rectangle{X: 350, Y: 200, Width: 100, Height: 100},
+			Physics:   NewPhysicsComponent(1.0, PlayerFriction, PlayerElasticity, PlayerDrag),
+			Draggable: PlayerDragComponent{},
+		}
 	}
+
+	player := resetGame()
 
 	obstacle := rl.Rectangle{X: 200, Y: 400, Width: 800, Height: 50}
 
@@ -231,6 +235,14 @@ func main() {
 
 	for !rl.WindowShouldClose() {
 		deltaTime := float64(rl.GetFrameTime())
+
+		if rl.IsKeyPressed(rl.KeyR) {
+			player = resetGame()
+		}
+
+		if rl.IsKeyPressed(rl.KeyEscape) {
+			break
+		}
 
 		ProcessMouseDrag(&player, deltaTime) // Updated to apply acceleration
 
